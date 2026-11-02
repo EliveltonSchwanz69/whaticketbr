@@ -159,6 +159,20 @@ dl.corr dd { margin: 0; font-size: 16px; }
 .panel h3.rev { color: var(--vermilion); }
 .panel p { margin: 0 0 8px; }
 .panel .dim { opacity: .55; }
+.panel .meaning { margin-top: 18px; padding: 14px 16px; border-radius: 5px; background: var(--table); border-left: 3px solid var(--gold); }
+.panel .meaning.is-rev { border-left-color: var(--vermilion); }
+.panel .meaning h3 { margin-top: 0; }
+.panel .meaning.is-rev h3 { color: var(--vermilion); }
+.panel .lead { font-size: 20px; line-height: 1.45; margin: 0; }
+.panel details.other { margin: 10px 0 4px; color: var(--muted); font-size: 16px; }
+.panel details.other summary { cursor: pointer; font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em; color: var(--muted); padding: 4px 0; }
+.panel details.other summary:hover { color: var(--ink); }
+.panel details.other p { margin: 6px 0 0; }
+.panel .sym-h { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line); }
+.panel .sym-list { list-style: none; padding: 0; margin: 6px 0 10px; display: grid; gap: 6px; font-size: 16px; }
+.panel .sym-list b { font-weight: 600; color: var(--ink); }
+.panel .note { font-size: 16px; color: var(--muted); font-style: italic; }
+.panel .head .kw { margin: 8px 0 0; }
 .empty-panel p { color: var(--muted); }
 .empty-panel ol { padding-left: 1.2em; margin: 8px 0 0; color: var(--muted); }
 
@@ -576,11 +590,15 @@ footer.sources em { color: var(--ink); }
     }).join("");
   }
 
+  var LETTER_MEANS = ["boi", "casa", "camelo", "porta", "janela", "prego", "espada", "cerca", "serpente", "mão", "palma da mão", "aguilhão", "água", "peixe", "esteio, apoio", "olho", "boca", "anzol", "nuca", "cabeça", "dente", "marca, sinal"];
+  var SEPH_PT = { Kether: "a Coroa", Chokmah: "a Sabedoria", Binah: "o Entendimento", Chesed: "a Misericórdia", Geburah: "a Severidade", Tiphareth: "a Beleza", Netzach: "a Vitória", Hod: "o Esplendor", Yesod: "o Fundamento", Malkuth: "o Reino" };
+  var ELEM_GLOSS = { Fogo: "impulso e ação", "Água": "sentimento e receptividade", Ar: "pensamento e movimento", Terra: "estabilidade e concretização" };
+
   function renderPanel() {
     var d = state.drawn[state.selected];
     if (!d) {
       els.panel.innerHTML = '<div class="empty-panel"><p class="eyebrow">Como usar</p><h2>A mesa está pronta</h2>' +
-        "<p>O baralho tem 78 cartas embaralhadas. Cada toque em <strong>Tirar carta</strong> revela a próxima e mostra aqui o simbolismo dela.</p>" +
+        "<p>O baralho tem 78 cartas embaralhadas. Cada toque em <strong>Tirar carta</strong> revela a próxima e mostra aqui o que ela significa.</p>" +
         "<ol><li>Escolha a tiragem (ou deixe livre).</li><li>Decida se quer cartas invertidas.</li><li>Tire as cartas uma a uma.</li><li>Toque numa carta da mesa para rever o significado.</li></ol></div>";
       return;
     }
@@ -588,34 +606,36 @@ footer.sources em { color: var(--ink); }
     var h = '<p class="eyebrow">' + (pos ? "Posição " + (state.selected + 1) + " · " + esc(pos[state.selected]) : "Carta " + (state.selected + 1)) + "</p>";
     h += '<div class="head"><img src="' + imgSrc(c) + '" alt="' + esc(c.name) + '"' + (d.reversed ? ' class="rev"' : "") + ' onerror="this.remove()"><div>';
     h += "<h2>" + esc(c.name) + "</h2>";
-    h += '<p class="orient">' + esc(c.arcana) + (c.gd ? " · " + esc(c.gd) : "") +
-      (d.reversed ? '<span class="flag rev">Invertida</span>' : '<span class="flag up">Direita</span>') + "</p></div></div>";
+    h += '<p class="orient">' + esc(c.arcana) +
+      (d.reversed ? '<span class="flag rev">Saiu invertida</span>' : '<span class="flag up">Saiu direita</span>') + "</p>";
+    h += '<ul class="kw">' + c.kw.map(function (k) { return "<li>" + esc(k) + "</li>"; }).join("") + "</ul></div></div>";
 
-    h += '<dl class="corr">';
+    // 1. O significado, na posição em que a carta saiu
+    h += '<section class="meaning ' + (d.reversed ? "is-rev" : "is-up") + '"><h3>' + (d.reversed ? "O que significa invertida" : "O que significa") + "</h3>";
+    h += '<p class="lead">' + esc(d.reversed ? c.rev : c.up) + "</p></section>";
+    h += '<details class="other"><summary>' + (d.reversed ? "E se tivesse saído direita?" : "E se tivesse saído invertida?") + "</summary><p>" + esc(d.reversed ? c.up : c.rev) + "</p></details>";
+
+    // 2. Simbolismo, em frases simples
+    var items = [];
     if (c.heb) {
-      h += "<dt>Letra</dt><dd><span lang=\"he\">" + c.heb + "</span> " + esc(c.letter) + "</dd>";
-      h += "<dt>Astrologia</dt><dd>" + esc(c.astro) + "</dd>";
-      h += "<dt>Caminho</dt><dd>" + c.path + " da Árvore da Vida · " + esc(c.pathLine) + "</dd>";
-    } else if (c.court) {
-      h += "<dt>Naipe</dt><dd>" + esc(suit.name) + " · " + esc(suit.element) + "</dd>";
-      h += "<dt>Elemento</dt><dd>" + esc(c.court.sub) + " de " + esc(suit.element) + "</dd>";
-      h += "<dt>Golden Dawn</dt><dd>" + esc(c.court.gd) + " " + esc(suit.of) + "</dd>";
-      h += "<dt>Mundo</dt><dd>" + esc(suit.world) + "</dd>";
+      items.push("<b>Letra hebraica:</b> <span lang=\"he\">" + c.heb + "</span> " + esc(c.letter) + ", que significa “" + esc(LETTER_MEANS[DECK.indexOf(c)]) + "”.");
+      items.push("<b>" + (/elemento/.test(c.astro) || /\(e /.test(c.astro) ? "Correspondência" : "Astrologia") + ":</b> " + esc(c.astro) + ".");
+      var ends = c.pathLine.split(" → ");
+      items.push("<b>Árvore da Vida:</b> caminho " + c.path + ", que liga " + esc(SEPH_PT[ends[0]]) + " (" + esc(ends[0]) + ") a " + esc(SEPH_PT[ends[1]]) + " (" + esc(ends[1]) + ").");
     } else {
-      h += "<dt>Naipe</dt><dd>" + esc(suit.name) + " · " + esc(suit.element) + " · " + esc(suit.theme) + "</dd>";
-      h += "<dt>Sephirah</dt><dd>" + c.n + ". " + esc(c.seph[0]) + ", " + esc(c.seph[1]) + "</dd>";
-      if (c.decan) h += "<dt>Decanato</dt><dd>" + esc(c.decan) + "</dd>";
-      h += "<dt>Mundo</dt><dd>" + esc(suit.world) + " · " + esc(suit.letter) + "</dd>";
+      items.push("<b>Naipe de " + esc(suit.name) + ":</b> elemento " + esc(suit.element) + ", que fala de " + esc(suit.theme) + ".");
+      if (c.court) {
+        items.push("<b>" + esc(c.name) + " = " + esc(c.court.sub) + " de " + esc(suit.element) + ":</b> " + esc(ELEM_GLOSS[c.court.sub]) + " (" + esc(c.court.sub) + ") aplicados ao terreno de " + esc(ELEM_GLOSS[suit.element]) + " (" + esc(suit.element) + ").");
+        items.push("<b>Na leitura:</b> cartas da corte costumam representar uma pessoa, ou a atitude que a situação pede.");
+        items.push("<b>Na Golden Dawn:</b> " + esc(c.court.gd) + " " + esc(suit.of) + ".");
+      } else {
+        items.push("<b>Número " + c.n + ":</b> na Cabala corresponde a " + esc(c.seph[0]) + ", " + esc(c.seph[1]) + ".");
+        if (c.decan) items.push("<b>Astrologia:</b> " + esc(c.decan) + ". Cada carta de 2 a 10 rege um trecho de 10 graus do zodíaco.");
+        items.push("<b>Na Golden Dawn:</b> esta carta se chama “" + esc(c.gd) + "”.");
+      }
     }
-    h += "</dl>";
-
-    h += '<ul class="kw">' + c.kw.map(function (k) { return "<li>" + esc(k) + "</li>"; }).join("") + "</ul>";
-    var upCls = d.reversed ? ' class="dim"' : "", revCls = d.reversed ? "" : ' class="dim"';
-    h += "<h3>Direita</h3><p" + upCls + ">" + esc(c.up) + "</p>";
-    h += '<h3 class="rev">Invertida</h3><p' + revCls + ">" + esc(c.rev) + "</p>";
-    if (c.note) h += "<h3>Simbolismo hermético</h3><p>" + esc(c.note) + "</p>";
-    else if (c.court) h += "<h3>Simbolismo hermético</h3><p>Na Golden Dawn as cartas da corte são combinações de elementos. " + esc(c.name) + " é " + esc(c.court.sub.toLowerCase()) + " de " + esc(suit.element.toLowerCase()) + ": a qualidade de " + esc(c.court.sub.toLowerCase()) + " agindo no domínio de " + esc(suit.theme) + ". Muitas vezes representa uma pessoa, ou uma atitude que o consulente precisa assumir.</p>";
-    else h += "<h3>Simbolismo hermético</h3><p>Os números de 1 a 10 correspondem às dez Sephiroth. Aqui, " + esc(c.seph[0]) + " (" + esc(c.seph[1]) + ") se expressa no " + esc(suit.element.toLowerCase()) + ", o mundo de " + esc(suit.theme) + "." + (c.decan ? " O decanato " + esc(c.decan) + " dá o tom planetário da carta." : "") + "</p>";
+    h += '<h3 class="sym-h">Simbolismo hermético</h3><ul class="sym-list">' + items.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
+    if (c.note) h += '<p class="note">' + esc(c.note) + "</p>";
     els.panel.innerHTML = h;
   }
 
