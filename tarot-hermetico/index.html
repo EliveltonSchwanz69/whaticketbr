@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mesa de Tarô Hermético</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+SC:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: uma mesa de leitura escura (feltro lápis-lazúli) à esquerda, um "livro de correspondências" fixo à direita; no celular, empilha. */
+:root {
+  --table: #10162a;        /* feltro da mesa */
+  --table-2: #18203a;      /* área elevada */
+  --line: #2c365a;         /* filetes */
+  --ink: #e9e3d3;          /* texto principal sobre a mesa */
+  --muted: #a39d8e;        /* texto secundário */
+  --gold: #d2a84f;         /* acento: douração */
+  --vermilion: #c2462f;    /* acento das cartas (cinábrio) */
+  --vellum: #f3ead4;       /* face da carta */
+  --vellum-ink: #2a2116;   /* tinta da carta */
+  --back: #1d2b5c;         /* verso da carta */
+  --font-display: "Cormorant SC", "Cormorant Garamond", Georgia, serif;
+  --font-body: "EB Garamond", Garamond, Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --card-w: clamp(104px, 26vw, 150px);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--table);
+  background-image: radial-gradient(ellipse at 50% 0%, var(--table-2) 0%, var(--table) 70%);
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+header.top {
+  display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px;
+  border-bottom: 1px solid var(--line); padding-bottom: 14px;
+}
+h1 {
+  font-family: var(--font-display); font-weight: 600; font-size: clamp(28px, 5vw, 42px);
+  margin: 0; letter-spacing: .04em; line-height: 1.05; text-wrap: balance; color: var(--ink);
+}
+h1 small { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: .18em; color: var(--gold); text-transform: uppercase; margin-bottom: 6px; }
+.counter { font-family: var(--font-mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.counter b { color: var(--gold); font-weight: 500; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: 16px 0 6px; }
+.controls label { font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; color: var(--muted); display: inline-flex; align-items: center; gap: 8px; }
+select, button { font: inherit; }
+select {
+  background: var(--table-2); color: var(--ink); border: 1px solid var(--line); border-radius: 4px;
+  padding: 6px 10px; font-family: var(--font-body); font-size: 16px;
+}
+input[type="checkbox"] { accent-color: var(--gold); width: 16px; height: 16px; }
+.btn {
+  border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 4px;
+  padding: 8px 14px; font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
+}
+.btn:hover { border-color: var(--gold); color: var(--gold); }
+.btn-draw {
+  background: var(--gold); color: var(--vellum-ink); border-color: var(--gold);
+  font-family: var(--font-display); font-size: 20px; letter-spacing: .06em; text-transform: none; font-weight: 700;
+  padding: 10px 26px;
+}
+.btn-draw:hover { color: var(--vellum-ink); filter: brightness(1.08); }
+.btn-draw:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; margin-top: 18px; }
+@media (min-width: 940px) { .layout { grid-template-columns: minmax(0, 1fr) 420px; align-items: start; } }
+
+/* Mesa */
+.table-area { min-width: 0; }
+.spread-hint { font-style: italic; color: var(--muted); margin: 0 0 14px; font-size: 16px; }
+.spread { display: flex; flex-wrap: wrap; gap: 18px 14px; align-items: flex-start; }
+.slot { display: flex; flex-direction: column; align-items: center; gap: 6px; width: var(--card-w); }
+.slot .pos { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); text-align: center; line-height: 1.3; min-height: 2.6em; }
+.slot .pos b { color: var(--gold); font-weight: 500; }
+.slot.empty .ghost {
+  width: var(--card-w); aspect-ratio: 300 / 527; max-width: 100%; border: 1px dashed var(--line); border-radius: 8px;
+  display: grid; place-items: center; color: var(--line); font-family: var(--font-display); font-size: 28px;
+}
+
+/* Carta */
+.card { width: var(--card-w); aspect-ratio: 300 / 527; max-width: 100%; perspective: 900px; cursor: pointer; border: 0; padding: 0; background: none; border-radius: 8px; }
+.card .inner { position: relative; width: 100%; height: 100%; transition: transform .8s cubic-bezier(.2,.7,.2,1); transform-style: preserve-3d; }
+.card.flipped .inner { transform: rotateY(180deg); }
+.card .face, .card .backside { position: absolute; inset: 0; border-radius: 8px; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow: hidden; }
+.card .backside {
+  background: var(--back);
+  background-image:
+    repeating-linear-gradient(45deg, transparent 0 7px, rgba(210,168,79,.12) 7px 8px),
+    repeating-linear-gradient(-45deg, transparent 0 7px, rgba(210,168,79,.12) 7px 8px);
+  border: 3px solid var(--vellum); box-shadow: 0 6px 18px rgba(0,0,0,.45);
+  display: grid; place-items: center;
+}
+.card .backside svg { width: 46%; height: auto; }
+.card .face {
+  transform: rotateY(180deg); background: var(--vellum); color: var(--vellum-ink);
+  border: 0; box-shadow: 0 6px 18px rgba(0,0,0,.45);
+}
+.card .face .frame {
+  position: absolute; inset: 5px; border: 1px solid var(--vellum-ink); border-radius: 4px;
+  display: grid; grid-template-rows: auto 1fr auto; text-align: center; padding: 5px 4px;
+}
+.card.reversed .face .frame, .card.reversed .face img { transform: rotate(180deg); }
+.card .face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; background: var(--vellum); }
+.slot .cap { font-family: var(--font-display); font-weight: 600; font-size: 15px; line-height: 1.15; text-align: center; color: var(--ink); text-wrap: balance; }
+.card:not(.flipped) + .cap { visibility: hidden; }
+.slot .cap i { display: block; font-family: var(--font-mono); font-style: normal; font-weight: 400; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--vermilion); margin-top: 2px; }
+.panel .head { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 16px; align-items: start; }
+.panel .head img { width: 96px; aspect-ratio: 300 / 527; object-fit: cover; border-radius: 5px; box-shadow: 0 4px 12px rgba(0,0,0,.4); display: block; }
+.panel .head img.rev { transform: rotate(180deg); }
+.card .num { font-family: var(--font-display); font-weight: 700; font-size: calc(var(--card-w) * .13); line-height: 1; color: var(--vermilion); }
+.card .sym { display: grid; place-items: center; }
+.card .sym .heb { font-family: "Times New Roman", "Noto Serif Hebrew", serif; font-size: calc(var(--card-w) * .42); line-height: 1; color: var(--vellum-ink); }
+.card .sym svg { width: 56%; height: auto; }
+.card .nm { font-family: var(--font-display); font-weight: 700; font-size: calc(var(--card-w) * .105); line-height: 1.05; text-wrap: balance; }
+.card .sub { font-family: var(--font-mono); font-size: calc(var(--card-w) * .065); letter-spacing: .04em; color: var(--vermilion); margin-top: 2px; }
+.card.selected { outline: 2px solid var(--gold); outline-offset: 5px; }
+.card.deal { animation: deal .45s ease-out both; }
+@keyframes deal { from { transform: translateY(-24px) scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .card .inner { transition: none; }
+  .card.deal { animation: none; }
+}
+
+/* Painel de leitura */
+.panel {
+  min-width: 0; background: var(--table-2); border: 1px solid var(--line); border-radius: 6px; padding: 20px 20px 22px;
+}
+@media (min-width: 940px) { .panel { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); max-height: calc(100vh - 32px); overflow-y: auto; } }
+.panel .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin: 0; }
+.panel h2 { font-family: var(--font-display); font-weight: 600; font-size: 32px; line-height: 1.1; margin: 4px 0 2px; text-wrap: balance; }
+.panel .orient { font-style: italic; color: var(--muted); margin: 0 0 14px; }
+.orient .flag { font-style: normal; font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; margin-left: 6px; border: 1px solid currentColor; }
+.flag.up { color: var(--gold); }
+.flag.rev { color: var(--vermilion); }
+dl.corr { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0 0 16px; padding: 12px 0; border-block: 1px solid var(--line); }
+dl.corr dt { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-top: 4px; }
+dl.corr dd { margin: 0; font-size: 16px; }
+.kw { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; padding: 0; list-style: none; }
+.kw li { font-family: var(--font-mono); font-size: 12px; padding: 3px 8px; border-radius: 3px; border: 1px solid var(--line); color: var(--ink); }
+.panel h3 { font-family: var(--font-mono); font-weight: 500; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin: 16px 0 4px; }
+.panel h3.rev { color: var(--vermilion); }
+.panel p { margin: 0 0 8px; }
+.panel .dim { opacity: .55; }
+.panel .meaning { margin-top: 18px; padding: 14px 16px; border-radius: 5px; background: var(--table); border-left: 3px solid var(--gold); }
+.panel .meaning.is-rev { border-left-color: var(--vermilion); }
+.panel .meaning h3 { margin-top: 0; }
+.panel .meaning.is-rev h3 { color: var(--vermilion); }
+.panel .lead { font-size: 20px; line-height: 1.45; margin: 0; }
+.panel details.other { margin: 10px 0 4px; color: var(--muted); font-size: 16px; }
+.panel details.other summary { cursor: pointer; font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em; color: var(--muted); padding: 4px 0; }
+.panel details.other summary:hover { color: var(--ink); }
+.panel details.other p { margin: 6px 0 0; }
+.panel .sym-h { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line); }
+.panel .sym-list { list-style: none; padding: 0; margin: 6px 0 10px; display: grid; gap: 6px; font-size: 16px; }
+.panel .sym-list b { font-weight: 600; color: var(--ink); }
+.panel .note { font-size: 16px; color: var(--muted); font-style: italic; }
+.panel .head .kw { margin: 8px 0 0; }
+.empty-panel p { color: var(--muted); }
+.empty-panel ol { padding-left: 1.2em; margin: 8px 0 0; color: var(--muted); }
+
+.log { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 14px; }
+.log h2 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 0 0 8px; }
+.log ol { margin: 0; padding-left: 1.4em; font-size: 16px; }
+.log li { margin-bottom: 2px; }
+.log li span { color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+.log .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
+.log textarea { width: 100%; min-height: 120px; margin-top: 10px; background: var(--table); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 10px; font-family: var(--font-mono); font-size: 12px; }
+.toast { font-family: var(--font-mono); font-size: 12px; color: var(--gold); }
+
+footer.sources { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 16px; font-size: 15px; color: var(--muted); max-width: 75ch; }
+footer.sources h2 { font-family: var(--font-display); font-size: 20px; color: var(--ink); margin: 0 0 6px; font-weight: 600; }
+footer.sources ul { padding-left: 1.2em; margin: 6px 0 10px; }
+footer.sources em { color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1><small>Rider–Waite · Golden Dawn · Livro T</small>Mesa de Tarô Hermético</h1>
+    <div class="counter" id="counter" aria-live="polite"><b>78</b> cartas no baralho</div>
+  </header>
+
+  <div class="controls">
+    <button class="btn btn-draw" id="draw" type="button">Tirar carta</button>
+    <label for="spread">Tiragem
+      <select id="spread">
+        <option value="free">Livre (sem posições)</option>
+        <option value="one">Uma carta (conselho)</option>
+        <option value="three">Três cartas (passado · presente · futuro)</option>
+        <option value="five">Cruz de cinco cartas</option>
+        <option value="celtic">Cruz Celta (10 cartas, Waite)</option>
+      </select>
+    </label>
+    <label for="reversals"><input type="checkbox" id="reversals" checked> Cartas invertidas</label>
+    <button class="btn" id="shuffle" type="button">Embaralhar de novo</button>
+  </div>
+
+  <div class="layout">
+    <section class="table-area" aria-label="Mesa">
+      <p class="spread-hint" id="hint"></p>
+      <div class="spread" id="spreadEl"></div>
+
+      <div class="log" id="log" hidden>
+        <h2>Cartas da leitura</h2>
+        <ol id="logList"></ol>
+        <div class="actions">
+          <button class="btn" id="copy" type="button">Copiar resumo</button>
+          <span class="toast" id="toast" role="status"></span>
+        </div>
+        <textarea id="copyArea" readonly hidden aria-label="Resumo da leitura"></textarea>
+      </div>
+    </section>
+
+    <aside class="panel" id="panel" aria-live="polite"></aside>
+  </div>
+
+  <footer class="sources">
+    <h2>De onde vêm os significados</h2>
+    <p>As explicações são uma síntese das fontes clássicas da tradição hermética ocidental. Elas descrevem o simbolismo da carta; a leitura da vida da pessoa é sua.</p>
+    <ul>
+      <li><em>Book T: The Tarot</em>, Ordem Hermética da Aurora Dourada (S. L. MacGregor Mathers, c. 1888): títulos das cartas menores, decanatos astrológicos, atribuições elementais das cartas da corte.</li>
+      <li>A. E. Waite, <em>The Pictorial Key to the Tarot</em> (1910): significados divinatórios direitos e invertidos, e a Cruz Celta.</li>
+      <li>Paul Foster Case, <em>The Tarot: A Key to the Wisdom of the Ages</em> (1947): letras hebraicas e simbolismo dos Arcanos Maiores.</li>
+      <li>Aleister Crowley, <em>The Book of Thoth</em> (1944): correspondências cabalísticas e títulos alternativos.</li>
+      <li><em>Sefer Yetzirah</em> e o diagrama da Árvore da Vida (32 caminhos) para as letras e caminhos; <em>Tábua de Esmeralda</em> e <em>O Caibalion</em> (1908) para os princípios herméticos citados.</li>
+    </ul>
+    <p>Imagens: o baralho Rider–Waite–Smith original, desenhado por Pamela Colman Smith sob orientação de A. E. Waite (Rider &amp; Son, Londres, 1909), em digitalizações de domínio público (as mesmas do Wikimedia Commons).</p>
+    <p>Correspondências seguem o sistema da Golden Dawn (Força = VIII, Justiça = XI). As cartas são embaralhadas com o gerador aleatório criptográfico do navegador.</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Arcanos Maiores (atribuições da Golden Dawn) ---------- */
+  var MAJORS = [
+    ["0", "O Louco", "א", "Aleph", "Ar (elemento)", 11, "Kether → Chokmah",
+      ["novo começo", "espontaneidade", "fé", "liberdade"],
+      "O salto no desconhecido com o coração aberto. Início de jornada, confiança no processo, potencial puro ainda sem forma. Convida a agir sem garantias.",
+      "Imprudência, ingenuidade, risco tomado sem consciência. Hesitar diante do novo por medo, ou se lançar sem olhar onde pisa.",
+      "Aleph é o sopro, a letra muda de onde as outras nascem. Na Árvore da Vida liga a Coroa à Sabedoria: o Espírito antes de qualquer manifestação. O zero é o ovo cósmico."],
+    ["I", "O Mago", "ב", "Beth", "Mercúrio", 12, "Kether → Binah",
+      ["vontade", "habilidade", "manifestação", "iniciativa"],
+      "Poder de transformar intenção em realidade. Tem os quatro elementos sobre a mesa: os recursos estão disponíveis. Concentração, comunicação, domínio de si.",
+      "Manipulação, talento desperdiçado, truques e engano. Energia dispersa ou falta de confiança para começar.",
+      "Beth é a casa, o primeiro recipiente. Mercúrio é Hermes, mensageiro entre os mundos. Uma mão aponta ao céu, a outra à terra: “o que está em cima é como o que está embaixo” (Tábua de Esmeralda)."],
+    ["II", "A Sacerdotisa", "ג", "Gimel", "Lua", 13, "Kether → Tiphareth",
+      ["intuição", "mistério", "silêncio", "saber oculto"],
+      "Conhecimento que vem de dentro. Escutar antes de agir, confiar na intuição, respeitar o que ainda não pode ser dito. Guarda o véu entre o visível e o invisível.",
+      "Segredos, informações escondidas, desconexão da própria intuição. Superficialidade ou excesso de racionalização.",
+      "Gimel é o camelo que atravessa o deserto do Abismo. É o caminho mais longo da Árvore, descendo direto da Coroa à Beleza. Os pilares B e J do Templo de Salomão: Severidade e Misericórdia."],
+    ["III", "A Imperatriz", "ד", "Daleth", "Vênus", 14, "Chokmah → Binah",
+      ["fertilidade", "abundância", "natureza", "criação"],
+      "Fecundidade em todos os planos: projetos, relações, corpo, arte. Cuidado, prazer dos sentidos, crescimento natural. A mãe que nutre.",
+      "Bloqueio criativo, dependência, sufocamento pelo excesso de cuidado. Desconexão do corpo e da natureza.",
+      "Daleth é a porta. Une o Pai (Chokmah) e a Mãe (Binah), e Vênus é o único planeta cujo símbolo toca todas as Sephiroth. É o amor como força geradora."],
+    ["IV", "O Imperador", "ה", "Heh", "Áries", 15, "Chokmah → Tiphareth",
+      ["estrutura", "autoridade", "ordem", "estabilidade"],
+      "Organização, limites claros, liderança e responsabilidade. Construir com disciplina. A razão que dá forma ao impulso.",
+      "Rigidez, tirania, controle excessivo, ou o oposto: falta de disciplina e de estrutura.",
+      "Heh é a janela, por onde a luz entra de modo ordenado. Áries é o primeiro signo, o impulso inicial da primavera. (No Livro de Thoth, Crowley troca a letra para Tzaddi.)"],
+    ["V", "O Hierofante", "ו", "Vav", "Touro", 16, "Chokmah → Chesed",
+      ["tradição", "ensino", "instituição", "ética"],
+      "O mestre e a tradição. Aprendizado transmitido, rituais, pertencimento a um grupo, valores compartilhados. Busca de orientação espiritual.",
+      "Dogmatismo, rebeldia contra regras, questionar convenções. Necessidade de encontrar o próprio caminho fora da instituição.",
+      "Vav é o prego, aquilo que une. O Hierofante é o revelador do sagrado, o que ouve a voz interior e a traduz em ensinamento."],
+    ["VI", "Os Enamorados", "ז", "Zayin", "Gêmeos", 17, "Binah → Tiphareth",
+      ["escolha", "união", "valores", "amor"],
+      "Uma escolha feita com o coração e alinhada aos próprios valores. União, atração, harmonia entre opostos. A decisão define o caminho.",
+      "Desalinhamento de valores, indecisão, desarmonia na relação. Escolha evitada ou feita por motivos errados.",
+      "Zayin é a espada que discerne e separa. Gêmeos é o signo dos pares. A união verdadeira exige primeiro discriminar: consciência (homem), subconsciente (mulher), superconsciente (anjo)."],
+    ["VII", "O Carro", "ח", "Cheth", "Câncer", 18, "Binah → Geburah",
+      ["vitória", "determinação", "controle", "avanço"],
+      "Vitória pela força de vontade. Dominar forças opostas (as esfinges) e seguir adiante. Foco, autodisciplina, conquista.",
+      "Perda de direção, agressividade, forças em conflito puxando para lados diferentes.",
+      "Cheth é a cerca, o recinto protegido. Câncer é a carapaça. O condutor não segura rédeas: governa pela vontade interior."],
+    ["VIII", "A Força", "ט", "Teth", "Leão", 19, "Chesed → Geburah",
+      ["coragem", "domínio interior", "compaixão", "paciência"],
+      "A força suave que doma o leão. Coragem, autocontrole, paciência e compaixão vencendo o instinto bruto. Força moral, não física.",
+      "Dúvida de si, fraqueza, descontrole dos impulsos. Força usada com dureza.",
+      "Teth é a serpente, a energia vital (kundalini). Leão é regido pelo Sol. Waite e a Golden Dawn põem a Força em VIII; o Tarô de Marselha a numera XI. O símbolo do infinito sobre a cabeça repete o do Mago."],
+    ["IX", "O Eremita", "י", "Yod", "Virgem", 20, "Chesed → Tiphareth",
+      ["introspecção", "busca interior", "sabedoria", "solidão"],
+      "Retirar-se para encontrar a própria luz. Estudo, prudência, orientação interior, o mestre que ilumina o caminho para quem vem atrás.",
+      "Isolamento excessivo, solidão não desejada, recusa de conselho. Ou o fim do retiro: voltar ao mundo.",
+      "Yod é a mão e a menor letra, a semente de todas as outras. Virgem é a terra que guarda a semente. A lanterna contém o Selo de Salomão, a estrela de seis pontas."],
+    ["X", "A Roda da Fortuna", "כ", "Kaph", "Júpiter", 21, "Chesed → Netzach",
+      ["ciclos", "destino", "mudança", "ponto de virada"],
+      "A roda gira: ciclos, sorte, mudança de circunstâncias. Um momento de virada que traz movimento. O que sobe desce, o que desce sobe.",
+      "Resistência à mudança, má fase, ciclos que se repetem. Sentir-se à mercê das circunstâncias.",
+      "Kaph é a palma da mão que recebe. Júpiter é expansão e fortuna. Expressa o Princípio do Ritmo do Caibalion: tudo flui e reflui. Na roda: TARO / ROTA / TORA e as letras do Tetragrammaton."],
+    ["XI", "A Justiça", "ל", "Lamed", "Libra", 22, "Geburah → Tiphareth",
+      ["equilíbrio", "verdade", "causa e efeito", "decisão justa"],
+      "Verdade, equidade, responsabilidade pelos próprios atos. Decisões tomadas com clareza. Questões legais. Colhe-se o que se plantou.",
+      "Injustiça, desonestidade, fuga da responsabilidade. Desequilíbrio, julgamento parcial.",
+      "Lamed é o aguilhão que conduz o boi (Aleph): disciplina que ajusta o movimento. Libra é a balança. Expressa o Princípio de Causa e Efeito do Caibalion. Crowley a chama de Ajustamento."],
+    ["XII", "O Enforcado", "מ", "Mem", "Água (elemento)", 23, "Geburah → Hod",
+      ["entrega", "pausa", "nova perspectiva", "sacrifício"],
+      "Suspensão voluntária. Ver tudo de cabeça para baixo e assim enxergar o que antes estava oculto. Render-se, esperar, sacrificar algo menor por algo maior.",
+      "Estagnação, resistência, sacrifício inútil ou martírio. Adiar a decisão indefinidamente.",
+      "Mem é a água, uma das três letras-mãe. O afogado nas águas do inconsciente. A auréola mostra que a suspensão é iluminação, não castigo."],
+    ["XIII", "A Morte", "נ", "Nun", "Escorpião", 24, "Tiphareth → Netzach",
+      ["transformação", "fim de ciclo", "renovação", "desapego"],
+      "Um fim necessário que abre espaço para o novo. Transformação profunda, encerramento, mudança irreversível. Raramente indica morte física.",
+      "Resistência ao fim, apego ao que já acabou, transformação adiada e por isso mais dolorosa.",
+      "Nun é o peixe, a vida que se move nas águas profundas. Escorpião rege a morte e a regeneração: escorpião, águia e fênix. O sol nasce entre as torres ao fundo."],
+    ["XIV", "A Temperança", "ס", "Samekh", "Sagitário", 25, "Tiphareth → Yesod",
+      ["equilíbrio", "moderação", "alquimia", "paciência"],
+      "A arte de misturar opostos na medida certa. Moderação, cura, paciência, o caminho do meio. Integração gradual.",
+      "Excesso, desequilíbrio, impaciência. Misturas que não se combinam.",
+      "Samekh é o esteio, o apoio. Sagitário é a flecha que mira o alto. Crowley a chama de Arte: o casamento alquímico do fogo e da água (solve et coagula)."],
+    ["XV", "O Diabo", "ע", "Ayin", "Capricórnio", 26, "Tiphareth → Hod",
+      ["apego", "materialismo", "sombra", "prisões autoimpostas"],
+      "Correntes que a pessoa mesma aceitou: vícios, obsessões, dependências, medo. Força dos instintos e do desejo material. Também vitalidade e humor terreno.",
+      "Libertação, consciência do vício, romper correntes. Ou aprofundamento no padrão destrutivo.",
+      "Ayin é o olho, que vê só a superfície das coisas. Capricórnio é a cabra que escala a montanha. As correntes estão frouxas: podem ser retiradas."],
+    ["XVI", "A Torre", "פ", "Peh", "Marte", 27, "Netzach → Hod",
+      ["ruptura súbita", "revelação", "queda", "libertação"],
+      "Estruturas falsas desmoronam de uma vez. Choque, revelação, crise que liberta. O que é verdadeiro sobrevive ao raio.",
+      "Medo da mudança, desastre evitado ou adiado, crise vivida internamente.",
+      "Peh é a boca, a palavra que cria e destrói. Marte é a força que derruba. O raio é o lampejo de iluminação que desfaz a falsa coroa."],
+    ["XVII", "A Estrela", "צ", "Tzaddi", "Aquário", 28, "Netzach → Yesod",
+      ["esperança", "inspiração", "renovação", "cura"],
+      "Calma depois da tempestade. Esperança, fé no futuro, cura, generosidade. Conexão com algo maior. Abrir-se sem medo.",
+      "Desânimo, falta de fé, desconexão. Esperança que precisa ser reacendida.",
+      "Tzaddi é o anzol, a meditação que pesca nas águas do inconsciente. Aquário é o portador da água. A estrela de oito pontas é Sírius, ou Vênus como estrela matutina."],
+    ["XVIII", "A Lua", "ק", "Qoph", "Peixes", 29, "Netzach → Malkuth",
+      ["ilusão", "medo", "inconsciente", "intuição"],
+      "Caminho incerto à luz da lua. Medos, ilusões, sonhos, intuição. Nem tudo é o que parece. Atravessar a noite sem certezas.",
+      "A confusão se dissipa, a verdade aparece, medos perdem a força. Ou engano descoberto.",
+      "Qoph é a nuca, sede do cérebro primitivo e dos instintos. Peixes é o oceano do inconsciente. O lagostim sai das águas: a consciência emergindo da fase mais antiga da evolução."],
+    ["XIX", "O Sol", "ר", "Resh", "Sol", 30, "Hod → Yesod",
+      ["alegria", "sucesso", "vitalidade", "clareza"],
+      "Luz plena: sucesso, alegria, saúde, verdade. Tudo fica claro. Confiança, celebração, inocência reencontrada.",
+      "Alegria nublada temporariamente, otimismo excessivo, sucesso que demora um pouco mais.",
+      "Resh é a cabeça, o rosto. O Sol é o centro do sistema e a fonte de vida. A criança nua sobre o cavalo branco: a consciência regenerada, sem nada a esconder."],
+    ["XX", "O Julgamento", "ש", "Shin", "Fogo (e Espírito)", 31, "Hod → Malkuth",
+      ["renascimento", "chamado", "avaliação", "despertar"],
+      "O chamado da trombeta: despertar, renovação, avaliar a própria vida e responder a uma vocação. Perdão e recomeço.",
+      "Autocrítica dura, dúvida, ignorar o chamado interior. Medo do julgamento.",
+      "Shin é o dente e o fogo, letra-mãe. Suas três chamas lembram o Espírito descendo na matéria (o nome YHShVH). Crowley a chama de Éon."],
+    ["XXI", "O Mundo", "ת", "Tav", "Saturno (e Terra)", 32, "Yesod → Malkuth",
+      ["completude", "integração", "realização", "ciclo fechado"],
+      "Conclusão, realização, integração de todas as partes. Um ciclo se fecha com sucesso. Viagem, reconhecimento, sentir-se inteiro.",
+      "Incompletude, falta de fechamento, atalhos que impedem a conclusão. Quase lá.",
+      "Tav é a marca, o selo, a última letra. Saturno é o tempo e a forma. Os quatro querubins (Leão, Touro, Águia, Homem) são os signos fixos. Crowley a chama de Universo."]
+  ];
+
+  /* ---------- Arcanos Menores ---------- */
+  var SUITS = {
+    W: { name: "Paus", of: "de Paus", element: "Fogo", world: "Atziluth (mundo arquetípico)", letter: "Yod (י)", theme: "vontade, energia, criatividade, ação", tri: "fire" },
+    C: { name: "Copas", of: "de Copas", element: "Água", world: "Briah (mundo criativo)", letter: "Heh (ה)", theme: "emoções, amor, intuição, relações", tri: "water" },
+    S: { name: "Espadas", of: "de Espadas", element: "Ar", world: "Yetzirah (mundo formativo)", letter: "Vav (ו)", theme: "mente, conflito, verdade, decisão", tri: "air" },
+    P: { name: "Ouros", of: "de Ouros", element: "Terra", world: "Assiah (mundo material)", letter: "Heh final (ה)", theme: "corpo, trabalho, dinheiro, matéria", tri: "earth" }
+  };
+  var SEPH = {
+    1: ["Kether", "a Coroa: a semente pura do elemento"],
+    2: ["Chokmah", "a Sabedoria: a força do elemento em seu primeiro impulso"],
+    3: ["Binah", "o Entendimento: a força recebe forma e se estabiliza"],
+    4: ["Chesed", "a Misericórdia: ordem, expansão e consolidação"],
+    5: ["Geburah", "a Severidade: conflito, ruptura, a força que testa"],
+    6: ["Tiphareth", "a Beleza: harmonia, equilíbrio e êxito"],
+    7: ["Netzach", "a Vitória: emoção e desejo, frequentemente instáveis"],
+    8: ["Hod", "o Esplendor: intelecto e técnica"],
+    9: ["Yesod", "o Fundamento: força estabilizada, base sólida"],
+    10: ["Malkuth", "o Reino: o elemento plenamente manifestado na matéria"]
+  };
+  var NUMNAME = { 1: "Ás", 2: "Dois", 3: "Três", 4: "Quatro", 5: "Cinco", 6: "Seis", 7: "Sete", 8: "Oito", 9: "Nove", 10: "Dez" };
+  var ROMAN = { 1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI", 7: "VII", 8: "VIII", 9: "IX", 10: "X" };
+
+  // [título da Golden Dawn, decanato, palavras-chave, direito, invertido]
+  var PIPS = {
+    W: {
+      1: ["Raiz dos Poderes do Fogo", null, ["centelha", "início", "inspiração", "vontade"], "Uma centelha criativa: nova energia, entusiasmo, impulso de começar algo. Potencial de ação, paixão, nascimento de uma ideia.", "Atraso, energia dispersa, falso começo, falta de direção ou de motivação."],
+      2: ["Senhor do Domínio", "Marte em Áries", ["planejamento", "poder pessoal", "decisão"], "O mundo nas mãos: planejar o próximo passo, visão de longo prazo, decidir entre ficar e partir.", "Medo do desconhecido, planos que não saem do papel, hesitação."],
+      3: ["Senhor da Força Estabelecida", "Sol em Áries", ["expansão", "previsão", "primeiros resultados"], "Os navios partiram: expansão, olhar para longe, primeiros frutos do esforço, empreendimentos e parcerias.", "Obstáculos, atrasos, retorno que não chega, falta de visão."],
+      4: ["Senhor da Obra Perfeita", "Vênus em Áries", ["celebração", "harmonia", "lar"], "Celebração e estabilidade: conquista consolidada, festa, casamento, chegada ao lar, paz depois do trabalho.", "Transição, harmonia instável, celebração adiada. Segundo Waite, o sentido favorável permanece mesmo invertida."],
+      5: ["Senhor da Contenda", "Saturno em Leão", ["conflito", "competição", "disputa"], "Disputa de forças e egos: competição, discussão, energia sem coordenação, luta para se afirmar.", "Evitar conflitos, tensão interna, ou o fim da disputa e busca de acordo."],
+      6: ["Senhor da Vitória", "Júpiter em Leão", ["vitória", "reconhecimento", "boas notícias"], "Vitória e reconhecimento público. Boas notícias, mérito admitido, avanço confiante.", "Orgulho ferido, reconhecimento atrasado, insegurança, queda após o sucesso."],
+      7: ["Senhor do Valor", "Marte em Leão", ["coragem", "defesa", "perseverança"], "Defender a posição contra muitos. Coragem, firmeza, luta por aquilo em que se acredita.", "Sentir-se sobrecarregado, encurralado, desistir, perder a confiança."],
+      8: ["Senhor da Rapidez", "Mercúrio em Sagitário", ["movimento", "notícias", "rapidez"], "Tudo se acelera: notícias, mensagens, viagens, ação rápida rumo ao objetivo.", "Pressa, atrasos, frustração, desencontros. Waite cita as “flechas do ciúme”."],
+      9: ["Senhor da Grande Força", "Lua em Sagitário", ["resiliência", "vigilância", "persistência"], "Ferido mas de pé: resiliência, prontidão, força para o último esforço antes da vitória.", "Exaustão, defensividade excessiva, desconfiança, vontade de desistir."],
+      10: ["Senhor da Opressão", "Saturno em Sagitário", ["fardo", "sobrecarga", "responsabilidade"], "Carregar peso demais: responsabilidades acumuladas, esforço sem descanso, força usada de modo opressivo.", "Soltar o fardo, delegar, ou colapso pela sobrecarga."]
+    },
+    C: {
+      1: ["Raiz dos Poderes da Água", null, ["amor", "abertura", "graça", "emoção nova"], "O cálice transborda: amor, abertura emocional, compaixão, fertilidade, início de uma relação ou de uma fase afetiva.", "Bloqueio emocional, sentimentos reprimidos, vazio, amor não correspondido."],
+      2: ["Senhor do Amor", "Vênus em Câncer", ["união", "parceria", "atração"], "Encontro entre duas pessoas: união, atração mútua, parceria, reconciliação, respeito recíproco.", "Desequilíbrio na relação, ruptura, desarmonia, falta de reciprocidade."],
+      3: ["Senhor da Abundância", "Mercúrio em Câncer", ["celebração", "amizade", "comunidade"], "Brinde entre amigos: celebração, colheita feliz, comunidade, alegria compartilhada.", "Excesso, fofoca, isolamento, festa que vira desgaste."],
+      4: ["Senhor do Prazer Misturado", "Lua em Câncer", ["apatia", "contemplação", "insatisfação"], "Desinteresse pelo que se tem: tédio, introspecção, uma oferta que não é percebida.", "Despertar, nova motivação, aceitar o que está sendo oferecido."],
+      5: ["Senhor da Perda no Prazer", "Marte em Escorpião", ["perda", "luto", "arrependimento"], "Olhar os cálices derramados: tristeza, perda, arrependimento. Ainda há dois de pé atrás.", "Aceitação, perdão, seguir adiante, recuperar o que restou."],
+      6: ["Senhor do Prazer", "Sol em Escorpião", ["nostalgia", "inocência", "memória"], "Lembranças doces, infância, gentileza, presentes, reencontros com o passado.", "Preso ao passado, idealização da memória, dificuldade de crescer."],
+      7: ["Senhor do Sucesso Ilusório", "Vênus em Escorpião", ["ilusão", "fantasia", "escolhas"], "Muitas opções nas nuvens: fantasia, devaneio, desejos confusos, escolhas que parecem melhores do que são.", "Clareza, escolha firme, sair da ilusão e pôr os pés no chão."],
+      8: ["Senhor do Sucesso Abandonado", "Saturno em Peixes", ["partida", "desapego", "busca"], "Deixar para trás o que não satisfaz mais. Partir em busca de algo mais profundo, mesmo sem saber o quê.", "Medo de partir, ficar por obrigação, ou ir embora sem motivo."],
+      9: ["Senhor da Felicidade Material", "Júpiter em Peixes", ["satisfação", "desejo realizado", "contentamento"], "A “carta do desejo”: satisfação, conforto, alegria, aquilo que se queria se realiza.", "Complacência, excesso, insatisfação interior apesar do conforto."],
+      10: ["Senhor do Sucesso Perfeito", "Marte em Peixes", ["família", "harmonia", "realização afetiva"], "Felicidade duradoura: harmonia em família, lar, paz emocional, amor realizado.", "Lar desfeito, valores desalinhados, conflito familiar."]
+    },
+    S: {
+      1: ["Raiz dos Poderes do Ar", null, ["clareza", "verdade", "intelecto", "avanço"], "A espada coroada: clareza mental, verdade que corta a confusão, decisão, força do intelecto, vitória pela razão.", "Confusão, pensamento distorcido, palavras que ferem, força usada para destruir."],
+      2: ["Senhor da Paz Restaurada", "Lua em Libra", ["impasse", "trégua", "decisão adiada"], "Olhos vendados e espadas cruzadas: equilíbrio tenso, impasse, evitar decidir, trégua.", "Indecisão rompida, verdade revelada, excesso de informações."],
+      3: ["Senhor da Tristeza", "Saturno em Libra", ["mágoa", "separação", "dor"], "Coração atravessado: dor emocional, separação, mágoa, uma verdade que fere.", "Cura, liberação da dor, perdão, otimismo voltando."],
+      4: ["Senhor do Descanso da Contenda", "Júpiter em Libra", ["descanso", "recuperação", "retiro"], "Trégua para recuperar forças: descanso, convalescença, contemplação, silêncio.", "Inquietação, esgotamento, retorno precipitado à atividade."],
+      5: ["Senhor da Derrota", "Vênus em Aquário", ["derrota", "vitória vazia", "egoísmo"], "Ganhar a qualquer custo: conflito, humilhação, vitória que deixa um gosto amargo.", "Reconciliação, arrependimento, deixar o orgulho de lado."],
+      6: ["Senhor do Sucesso Merecido", "Mercúrio em Aquário", ["transição", "travessia", "alívio"], "A travessia para águas mais calmas: mudança, viagem, deixar problemas para trás.", "Bagagem emocional, resistência à mudança, travessia interrompida."],
+      7: ["Senhor do Esforço Instável", "Lua em Aquário", ["estratégia", "astúcia", "furtividade"], "Levar algumas espadas às escondidas: estratégia, astúcia, plano incompleto, agir sozinho.", "Confissão, consciência pesada, ser descoberto, mudar de tática."],
+      8: ["Senhor da Força Encurtada", "Júpiter em Gêmeos", ["restrição", "mente presa", "impotência"], "Amarrado e vendado entre espadas: sentir-se preso, restrição imposta pela própria mente.", "Libertação, nova perspectiva, tirar a venda."],
+      9: ["Senhor do Desespero e da Crueldade", "Marte em Gêmeos", ["ansiedade", "pesadelos", "culpa"], "Noite sem dormir: ansiedade, preocupação, culpa, medos que crescem no escuro.", "Esperança, pedir ajuda, a angústia começa a passar."],
+      10: ["Senhor da Ruína", "Sol em Gêmeos", ["fim", "colapso", "fundo do poço"], "Um fim doloroso e definitivo: o fundo do poço. Dali, só resta subir. O céu clareia ao fundo.", "Recuperação, regeneração, ou resistir a um fim inevitável."]
+    },
+    P: {
+      1: ["Raiz dos Poderes da Terra", null, ["oportunidade", "prosperidade", "manifestação"], "Uma oportunidade concreta: dinheiro, trabalho, saúde, um começo sólido no mundo material.", "Oportunidade perdida, má gestão, planos sem base."],
+      2: ["Senhor da Mudança Harmoniosa", "Júpiter em Capricórnio", ["equilíbrio", "adaptação", "prioridades"], "Malabarismo com dois pratos: adaptar-se, equilibrar prioridades, flexibilidade diante das ondas.", "Desorganização, sobrecarga, perder o equilíbrio financeiro."],
+      3: ["Senhor das Obras Materiais", "Marte em Capricórnio", ["ofício", "equipe", "competência"], "O artesão na catedral: trabalho em equipe, habilidade reconhecida, construção conjunta.", "Falta de colaboração, trabalho malfeito, desalinhamento."],
+      4: ["Senhor do Poder Terreno", "Sol em Capricórnio", ["segurança", "posse", "controle"], "Agarrar o que se tem: segurança, poupança, estabilidade, controle sobre recursos.", "Avareza, apego excessivo, ou liberar recursos e gastar."],
+      5: ["Senhor da Dificuldade Material", "Mercúrio em Touro", ["escassez", "exclusão", "dificuldade"], "Do lado de fora no frio: escassez, dificuldade financeira ou de saúde, sentir-se excluído. A ajuda está perto (a janela iluminada).", "Recuperação, fim da escassez, aceitar ajuda."],
+      6: ["Senhor do Sucesso Material", "Lua em Touro", ["generosidade", "dar e receber", "partilha"], "A balança da partilha: generosidade, caridade, dar e receber com equilíbrio.", "Dívida, generosidade com condições, desigualdade de poder."],
+      7: ["Senhor do Sucesso Não Realizado", "Saturno em Touro", ["paciência", "avaliação", "longo prazo"], "Olhar para a plantação: paciência, avaliar o investimento, esperar a colheita.", "Impaciência, esforço sem retorno, investimento mal feito."],
+      8: ["Senhor da Prudência", "Sol em Virgem", ["dedicação", "aprendizado", "maestria"], "O aprendiz na bancada: dedicação, prática, aperfeiçoamento, trabalho bem feito.", "Perfeccionismo, falta de foco, trabalho repetitivo sem propósito."],
+      9: ["Senhor do Ganho Material", "Vênus em Virgem", ["autossuficiência", "conforto", "refinamento"], "No jardim próprio: independência, conforto conquistado, refinamento, colheita merecida.", "Dependência, aparência sem substância, gastos excessivos."],
+      10: ["Senhor da Riqueza", "Mercúrio em Virgem", ["legado", "família", "patrimônio"], "Riqueza que atravessa gerações: família, herança, estabilidade duradoura, tradição.", "Perda financeira, conflitos de herança, instabilidade familiar."]
+    }
+  };
+
+  // Cartas da corte: [nome RWS, elemento, título GD/Thoth, keywords, direito, invertido]
+  var COURT_RANKS = [
+    { key: "Pg", file: "11", name: "Pajem", sub: "Terra", gd: "Princesa", num: "P" },
+    { key: "Kn", file: "12", name: "Cavaleiro", sub: "Ar", gd: "Príncipe", num: "C" },
+    { key: "Q", file: "13", name: "Rainha", sub: "Água", gd: "Rainha", num: "Rn" },
+    { key: "K", file: "14", name: "Rei", sub: "Fogo", gd: "Cavaleiro (Rei)", num: "R" }
+  ];
+  var COURTS = {
+    W: {
+      Pg: [["entusiasmo", "mensagem", "exploração"], "Espírito livre e curioso: entusiasmo, uma notícia, vontade de explorar, ideia nova cheia de energia.", "Impulsividade, más notícias, ideias que não saem do lugar."],
+      Kn: [["ação", "aventura", "impetuosidade"], "Movimento e ousadia: aventura, viagem, partida, paixão que avança sem pensar duas vezes.", "Precipitação, raiva, dispersão, começar sem terminar."],
+      Q: [["confiança", "carisma", "calor"], "Calor e magnetismo: confiança, independência, determinação, alegria contagiante.", "Ciúme, insegurança, exigência, temperamento difícil."],
+      K: [["liderança", "visão", "empreendedorismo"], "O líder visionário: honra, iniciativa, inspira os outros, transforma visão em realidade.", "Autoritarismo, impulsividade, expectativas irreais."]
+    },
+    C: {
+      Pg: [["sensibilidade", "intuição", "criatividade"], "Mensagem afetiva ou criativa: sensibilidade, sonho, intuição desperta, surpresa emocional.", "Imaturidade emocional, bloqueio criativo, fuga da realidade."],
+      Kn: [["romance", "convite", "idealismo"], "O cavaleiro que traz o cálice: proposta, romance, charme, seguir o coração.", "Promessas vazias, mau humor, ilusão romântica."],
+      Q: [["compaixão", "acolhimento", "intuição"], "A que sente e acolhe: compaixão, cuidado, intuição profunda, calma emocional.", "Dependência emocional, martírio, sensibilidade excessiva."],
+      K: [["equilíbrio emocional", "diplomacia", "sabedoria"], "Domínio das emoções sem reprimi-las: diplomacia, conselho, generosidade, calma no mar agitado.", "Manipulação, volatilidade emocional, frieza calculada."]
+    },
+    S: {
+      Pg: [["curiosidade", "vigilância", "ideias"], "Mente ágil e atenta: curiosidade, vigilância, sede de saber, palavras diretas.", "Fofoca, palavras ferinas, falta de planejamento."],
+      Kn: [["ambição", "rapidez", "determinação"], "Carga a toda velocidade: determinação, ação rápida, defesa de uma ideia.", "Agressividade, imprudência, atropelar os outros."],
+      Q: [["clareza", "independência", "discernimento"], "A que vê com nitidez: verdade, independência, limites claros, experiência transformada em sabedoria.", "Frieza, amargura, julgamento severo."],
+      K: [["autoridade intelectual", "verdade", "justiça"], "O juiz: autoridade, ética, raciocínio claro, decisões firmes e justas.", "Tirania, manipulação, uso cruel do poder."]
+    },
+    P: {
+      Pg: [["estudo", "ambição prática", "manifestação"], "O estudante que observa a moeda: aprendizado, projeto novo, ambição prática, notícia sobre dinheiro.", "Preguiça, falta de progresso, desatenção."],
+      Kn: [["método", "rotina", "confiabilidade"], "O que avança devagar e sempre: método, trabalho, responsabilidade, constância.", "Estagnação, tédio, teimosia."],
+      Q: [["nutrição", "praticidade", "abundância"], "Cuidado concreto: praticidade, generosidade, abundância doméstica, segurança para os outros.", "Descuido de si, materialismo, desequilíbrio entre trabalho e lar."],
+      K: [["prosperidade", "segurança", "solidez"], "O empresário sereno: prosperidade, segurança, sucesso material, disciplina e generosidade.", "Ganância, rigidez, obsessão pelo dinheiro."]
+    }
+  };
+
+  /* ---------- Montagem do baralho ---------- */
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function imgSrc(c) { return "cartas/" + c.img + ".jpg"; }
+  var DECK = [];
+  MAJORS.forEach(function (m, i) {
+    DECK.push({
+      id: "M" + i, img: "m" + pad(i), arcana: "Arcano Maior", num: m[0], name: m[1], heb: m[2], letter: m[3], astro: m[4],
+      path: m[5], pathLine: m[6], kw: m[7], up: m[8], rev: m[9], note: m[10]
+    });
+  });
+  Object.keys(SUITS).forEach(function (s) {
+    var suit = SUITS[s];
+    for (var n = 1; n <= 10; n++) {
+      var p = PIPS[s][n];
+      DECK.push({
+        id: s + n, img: s.toLowerCase() + pad(n), arcana: "Arcano Menor", suit: s, num: n === 1 ? "Ás" : ROMAN[n], n: n,
+        name: (n === 1 ? "Ás" : NUMNAME[n]) + " " + suit.of, gd: p[0], decan: p[1], kw: p[2], up: p[3], rev: p[4],
+        seph: SEPH[n]
+      });
+    }
+    COURT_RANKS.forEach(function (r) {
+      var c = COURTS[s][r.key];
+      DECK.push({
+        id: s + r.key, img: s.toLowerCase() + r.file, arcana: "Carta da Corte", suit: s, num: r.name, court: r,
+        name: r.name + " " + suit.of, kw: c[0], up: c[1], rev: c[2]
+      });
+    });
+  });
+
+  var SPREADS = {
+    free: { hint: "Tiragem livre: tire quantas cartas quiser. Toque em qualquer carta na mesa para rever o significado.", pos: null },
+    one: { hint: "Uma carta como conselho ou foco do momento.", pos: ["Conselho"] },
+    three: { hint: "Linha do tempo em três cartas.", pos: ["Passado", "Presente", "Futuro"] },
+    five: { hint: "Cruz de cinco cartas: o centro e as quatro direções.", pos: ["Situação atual", "Influências do passado", "Influências futuras", "Causa (raiz)", "Potencial / resultado"] },
+    celtic: { hint: "Cruz Celta conforme A. E. Waite, The Pictorial Key to the Tarot (1910).", pos: [
+      "Situação atual", "O que cruza (obstáculo)", "O que coroa (ideal consciente)", "A base (raiz, inconsciente)",
+      "O que ficou para trás", "O que vem à frente", "O consulente (atitude)", "Ambiente e outras pessoas",
+      "Esperanças e medos", "Resultado"] }
+  };
+
+  /* ---------- Estado ---------- */
+  var state = { deck: [], drawn: [], selected: -1 };
+  var $ = function (id) { return document.getElementById(id); };
+  var els = {
+    draw: $("draw"), shuffle: $("shuffle"), spread: $("spread"), reversals: $("reversals"),
+    spreadEl: $("spreadEl"), panel: $("panel"), counter: $("counter"), hint: $("hint"),
+    log: $("log"), logList: $("logList"), copy: $("copy"), copyArea: $("copyArea"), toast: $("toast")
+  };
+
+  function rnd(max) {
+    try {
+      var a = new Uint32Array(1), lim = Math.floor(0x100000000 / max) * max;
+      do { crypto.getRandomValues(a); } while (a[0] >= lim);
+      return a[0] % max;
+    } catch (e) { return Math.floor(Math.random() * max); }
+  }
+  function shuffled() {
+    var d = DECK.slice();
+    for (var i = d.length - 1; i > 0; i--) { var j = rnd(i + 1), t = d[i]; d[i] = d[j]; d[j] = t; }
+    return d;
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  function elemSVG(tri, color) {
+    var bar = (tri === "air" || tri === "earth");
+    var down = (tri === "water" || tri === "earth");
+    var pts = down ? "10,14 90,14 50,86" : "50,14 90,86 10,86";
+    var by = down ? 38 : 62;
+    return '<svg viewBox="0 0 100 100" aria-hidden="true"><polygon points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="6" stroke-linejoin="round"/>' +
+      (bar ? '<line x1="' + (down ? 24 : 24) + '" y1="' + by + '" x2="76" y2="' + by + '" stroke="' + color + '" stroke-width="6" stroke-linecap="round"/>' : "") + "</svg>";
+  }
+  var BACK_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="40" fill="none" stroke="#d2a84f" stroke-width="2.5"/>' +
+    '<polygon points="50,14 81,68 19,68" fill="none" stroke="#d2a84f" stroke-width="2.5"/><polygon points="50,86 19,32 81,32" fill="none" stroke="#d2a84f" stroke-width="2.5"/>' +
+    '<circle cx="50" cy="50" r="6" fill="#d2a84f"/></svg>';
+
+  function cardFace(c) {
+    var sym, sub;
+    if (c.heb) { sym = '<span class="heb" lang="he">' + c.heb + "</span>"; sub = c.astro; }
+    else { sym = elemSVG(SUITS[c.suit].tri, "#2a2116"); sub = c.court ? c.court.sub + " de " + SUITS[c.suit].element : (c.decan || "Raiz · " + SUITS[c.suit].element); }
+    return '<div class="frame"><div class="num">' + esc(c.num) + '</div><div class="sym">' + sym + '</div><div><div class="nm">' + esc(c.name) + '</div><div class="sub">' + esc(sub) + "</div></div></div>" +
+      '<img src="' + imgSrc(c) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">';
+  }
+
+  function positions() { return SPREADS[els.spread.value].pos; }
+
+  function render() {
+    var pos = positions();
+    var total = pos ? pos.length : state.drawn.length;
+    var html = "";
+    for (var i = 0; i < total; i++) {
+      var d = state.drawn[i];
+      var label = pos ? '<div class="pos"><b>' + (i + 1) + "</b> · " + esc(pos[i]) + "</div>" : '<div class="pos"><b>' + (i + 1) + "</b></div>";
+      if (d) {
+        html += '<div class="slot">' + label +
+          '<button type="button" class="card' + (d.flipped ? " flipped" : "") + (d.reversed ? " reversed" : "") + (i === state.selected ? " selected" : "") + (d.fresh ? " deal" : "") +
+          '" data-i="' + i + '" aria-label="' + esc(d.card.name + (d.reversed ? ", invertida" : "")) + '"><div class="inner"><div class="backside">' + BACK_SVG + '</div><div class="face">' + cardFace(d.card) + "</div></div></button>" +
+          ('<div class="cap">' + esc(d.card.name) + (d.reversed ? "<i>invertida</i>" : "") + "</div>") + "</div>";
+      } else {
+        html += '<div class="slot empty">' + label + '<div class="ghost">' + (i + 1) + "</div></div>";
+      }
+    }
+    els.spreadEl.innerHTML = html;
+    els.hint.textContent = SPREADS[els.spread.value].hint;
+
+    var left = state.deck.length;
+    els.counter.innerHTML = "<b>" + left + "</b> " + (left === 1 ? "carta" : "cartas") + " no baralho · " + state.drawn.length + " na mesa";
+    var full = pos && state.drawn.length >= pos.length;
+    els.draw.disabled = left === 0 || full;
+    els.draw.textContent = full ? "Tiragem completa" : (left === 0 ? "Baralho vazio" : "Tirar carta");
+
+    els.log.hidden = state.drawn.length === 0;
+    els.logList.innerHTML = state.drawn.map(function (d, i) {
+      var p = pos ? pos[i] + ": " : "";
+      return "<li>" + esc(p) + "<strong>" + esc(d.card.name) + "</strong> <span>" + (d.reversed ? "invertida" : "direita") + "</span></li>";
+    }).join("");
+  }
+
+  var LETTER_MEANS = ["boi", "casa", "camelo", "porta", "janela", "prego", "espada", "cerca", "serpente", "mão", "palma da mão", "aguilhão", "água", "peixe", "esteio, apoio", "olho", "boca", "anzol", "nuca", "cabeça", "dente", "marca, sinal"];
+  var SEPH_PT = { Kether: "a Coroa", Chokmah: "a Sabedoria", Binah: "o Entendimento", Chesed: "a Misericórdia", Geburah: "a Severidade", Tiphareth: "a Beleza", Netzach: "a Vitória", Hod: "o Esplendor", Yesod: "o Fundamento", Malkuth: "o Reino" };
+  var ELEM_GLOSS = { Fogo: "impulso e ação", "Água": "sentimento e receptividade", Ar: "pensamento e movimento", Terra: "estabilidade e concretização" };
+
+  function renderPanel() {
+    var d = state.drawn[state.selected];
+    if (!d) {
+      els.panel.innerHTML = '<div class="empty-panel"><p class="eyebrow">Como usar</p><h2>A mesa está pronta</h2>' +
+        "<p>O baralho tem 78 cartas embaralhadas. Cada toque em <strong>Tirar carta</strong> revela a próxima e mostra aqui o que ela significa.</p>" +
+        "<ol><li>Escolha a tiragem (ou deixe livre).</li><li>Decida se quer cartas invertidas.</li><li>Tire as cartas uma a uma.</li><li>Toque numa carta da mesa para rever o significado.</li></ol></div>";
+      return;
+    }
+    var c = d.card, pos = positions(), suit = c.suit ? SUITS[c.suit] : null;
+    var h = '<p class="eyebrow">' + (pos ? "Posição " + (state.selected + 1) + " · " + esc(pos[state.selected]) : "Carta " + (state.selected + 1)) + "</p>";
+    h += '<div class="head"><img src="' + imgSrc(c) + '" alt="' + esc(c.name) + '"' + (d.reversed ? ' class="rev"' : "") + ' onerror="this.remove()"><div>';
+    h += "<h2>" + esc(c.name) + "</h2>";
+    h += '<p class="orient">' + esc(c.arcana) +
+      (d.reversed ? '<span class="flag rev">Saiu invertida</span>' : '<span class="flag up">Saiu direita</span>') + "</p>";
+    h += '<ul class="kw">' + c.kw.map(function (k) { return "<li>" + esc(k) + "</li>"; }).join("") + "</ul></div></div>";
+
+    // 1. O significado, na posição em que a carta saiu
+    h += '<section class="meaning ' + (d.reversed ? "is-rev" : "is-up") + '"><h3>' + (d.reversed ? "O que significa invertida" : "O que significa") + "</h3>";
+    h += '<p class="lead">' + esc(d.reversed ? c.rev : c.up) + "</p></section>";
+    h += '<details class="other"><summary>' + (d.reversed ? "E se tivesse saído direita?" : "E se tivesse saído invertida?") + "</summary><p>" + esc(d.reversed ? c.up : c.rev) + "</p></details>";
+
+    // 2. Simbolismo, em frases simples
+    var items = [];
+    if (c.heb) {
+      items.push("<b>Letra hebraica:</b> <span lang=\"he\">" + c.heb + "</span> " + esc(c.letter) + ", que significa “" + esc(LETTER_MEANS[DECK.indexOf(c)]) + "”.");
+      items.push("<b>" + (/elemento/.test(c.astro) || /\(e /.test(c.astro) ? "Correspondência" : "Astrologia") + ":</b> " + esc(c.astro) + ".");
+      var ends = c.pathLine.split(" → ");
+      items.push("<b>Árvore da Vida:</b> caminho " + c.path + ", que liga " + esc(SEPH_PT[ends[0]]) + " (" + esc(ends[0]) + ") a " + esc(SEPH_PT[ends[1]]) + " (" + esc(ends[1]) + ").");
+    } else {
+      items.push("<b>Naipe de " + esc(suit.name) + ":</b> elemento " + esc(suit.element) + ", que fala de " + esc(suit.theme) + ".");
+      if (c.court) {
+        items.push("<b>" + esc(c.name) + " = " + esc(c.court.sub) + " de " + esc(suit.element) + ":</b> " + esc(ELEM_GLOSS[c.court.sub]) + " (" + esc(c.court.sub) + ") aplicados ao terreno de " + esc(ELEM_GLOSS[suit.element]) + " (" + esc(suit.element) + ").");
+        items.push("<b>Na leitura:</b> cartas da corte costumam representar uma pessoa, ou a atitude que a situação pede.");
+        items.push("<b>Na Golden Dawn:</b> " + esc(c.court.gd) + " " + esc(suit.of) + ".");
+      } else {
+        items.push("<b>Número " + c.n + ":</b> na Cabala corresponde a " + esc(c.seph[0]) + ", " + esc(c.seph[1]) + ".");
+        if (c.decan) items.push("<b>Astrologia:</b> " + esc(c.decan) + ". Cada carta de 2 a 10 rege um trecho de 10 graus do zodíaco.");
+        items.push("<b>Na Golden Dawn:</b> esta carta se chama “" + esc(c.gd) + "”.");
+      }
+    }
+    h += '<h3 class="sym-h">Simbolismo hermético</h3><ul class="sym-list">' + items.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
+    if (c.note) h += '<p class="note">' + esc(c.note) + "</p>";
+    els.panel.innerHTML = h;
+  }
+
+  function draw() {
+    var pos = positions();
+    if (!state.deck.length || (pos && state.drawn.length >= pos.length)) return;
+    var card = state.deck.shift();
+    var reversed = els.reversals.checked && rnd(2) === 1;
+    state.drawn.forEach(function (d) { d.fresh = false; });
+    state.drawn.push({ card: card, reversed: reversed, flipped: false, fresh: true });
+    state.selected = state.drawn.length - 1;
+    render();
+    renderPanel();
+    var idx = state.selected;
+    requestAnimationFrame(function () {
+      setTimeout(function () {
+        state.drawn[idx].flipped = true;
+        var btn = els.spreadEl.querySelector('.card[data-i="' + idx + '"]');
+        if (btn) { btn.classList.add("flipped"); btn.classList.remove("deal"); }
+        state.drawn[idx].fresh = false;
+      }, 260);
+    });
+  }
+
+  function reset() {
+    state.deck = shuffled(); state.drawn = []; state.selected = -1;
+    els.copyArea.hidden = true; els.toast.textContent = "";
+    render(); renderPanel();
+  }
+
+  function summary() {
+    var pos = positions();
+    var lines = ["Leitura de tarô · " + els.spread.options[els.spread.selectedIndex].text, ""];
+    state.drawn.forEach(function (d, i) {
+      var c = d.card;
+      lines.push((i + 1) + ". " + (pos ? pos[i] + ": " : "") + c.name + (d.reversed ? " (invertida)" : "") +
+        (c.heb ? " · " + c.letter + " · " + c.astro : c.decan ? " · " + c.decan : ""));
+      lines.push("   " + (d.reversed ? c.rev : c.up));
+    });
+    return lines.join("\n");
+  }
+
+  els.draw.addEventListener("click", draw);
+  els.shuffle.addEventListener("click", reset);
+  els.spread.addEventListener("change", reset);
+  els.spreadEl.addEventListener("click", function (e) {
+    var b = e.target.closest(".card"); if (!b) return;
+    var i = +b.getAttribute("data-i");
+    state.selected = i;
+    if (!state.drawn[i].flipped) state.drawn[i].flipped = true;
+    state.drawn.forEach(function (d) { d.fresh = false; });
+    render(); renderPanel();
+    if (window.matchMedia("(max-width: 939px)").matches) els.panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  els.copy.addEventListener("click", function () {
+    var text = summary();
+    function fallback() {
+      els.copyArea.hidden = false; els.copyArea.value = text; els.copyArea.focus(); els.copyArea.select();
+      els.toast.textContent = "Texto selecionado abaixo: copie manualmente.";
+    }
+    try {
+      navigator.clipboard.writeText(text).then(function () { els.toast.textContent = "Resumo copiado."; }, fallback);
+    } catch (e) { fallback(); }
+  });
+
+  reset();
+})();
+</script>
+</body>
+</html>
